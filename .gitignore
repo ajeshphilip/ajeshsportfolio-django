@@ -3,3 +3,4 @@ db.sqlite3
 /.idea
 /__pycache__
 /ajeshp_portfolio/__pycache__
+/website/__pycache__
