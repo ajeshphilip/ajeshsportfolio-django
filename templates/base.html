@@ -25,7 +25,7 @@
                 {% if page == '/' %}
                     <a class="navbar-brand" href="#page-top">Ajesh's Portfolio</a>
                 {% else %}
-                     <a class="navbar-brand" href="/">Ajesh's Portfolio</a>
+                     <a class="navbar-brand" href="{% url 'website:index' %}">Ajesh's Portfolio</a>
                 {% endif %}
 
                 <button class="navbar-toggler text-uppercase font-weight-bold bg-primary text-white rounded" type="button" data-bs-toggle="collapse" data-bs-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,11 +34,11 @@
                 </button>
                 <div class="collapse navbar-collapse" id="navbarResponsive">
                     <ul class="navbar-nav ms-auto">
-                        {%  if page == '/' %}
+                        {%  if view_name == 'website:index' %}
                             <li class="nav-item mx-0 mx-lg-1"><a class="nav-link py-3 px-0 px-lg-3 rounded" href="#portfolio">Portfolio</a></li>
                             <li class="nav-item mx-0 mx-lg-1"><a class="nav-link py-3 px-0 px-lg-3 rounded" href="#about">About</a></li>
                             <li class="nav-item mx-0 mx-lg-1"><a class="nav-link py-3 px-0 px-lg-3 rounded" href="#contact">Contact</a></li>
-                        {% elif '/airpollution' in page %}
+                        {% elif view_name == 'airpollution:welcome' %}
                              <li class="nav-item mx-0 mx-lg-1"><a class="nav-link py-3 px-0 px-lg-3 rounded" href="#import-form">Import Form</a></li>
                              <li class="nav-item mx-0 mx-lg-1"><a class="nav-link py-3 px-0 px-lg-3 rounded" href="#data-table">Data Table</a></li>
                              <li class="nav-item mx-0 mx-lg-1"><a class="nav-link py-3 px-0 px-lg-3 rounded" href="#data-visuals">Data Visuals</a></li>

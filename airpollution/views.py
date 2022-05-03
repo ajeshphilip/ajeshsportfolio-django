@@ -6,6 +6,6 @@ from django.shortcuts import render
 def welcome(request):
     print('hello')
     context = {
-        'page': request.path,
+        'view_name': request.resolver_match.view_name,
     }
     return render(request, 'airpollution/welcome.html', context)
