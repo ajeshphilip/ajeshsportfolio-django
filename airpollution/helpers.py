@@ -44,7 +44,6 @@ def get_headers_and_units(ws):
                 if header[index] == ')':
                     break
                 units += header[index]
-            continue
         elif 'unit' in header:
             units = ws[column][headers_row + 1].value
             continue
