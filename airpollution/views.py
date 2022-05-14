@@ -1,7 +1,7 @@
 import colorsys
 
-from django.shortcuts import render
-from django.db.models import Q, Sum
+from django.shortcuts import render, redirect
+from django.db.models import Q, Sum, Min, Max
 from django import forms
 from django.http import HttpResponse
 import openpyxl
@@ -21,38 +21,36 @@ def airpollution(request):
     if request.method == 'GET':
         table_data = {}
         visuals_data = {}
-        pollutant_list = [pollutant.name for pollutant in Pollutant.objects.all()]
-        country_list = [country.iso_code for country in Country.objects.all()]
+        pollutant_list = [pollutant for pollutant in Pollutant.objects.all()]
+        country_list = [country for country in Country.objects.all()]
 
         for pollutant in pollutant_list:
-            table_data[pollutant] = {}
-            visuals_data[pollutant] = {'labels': [], 'data': []}
+            table_data[pollutant.name] = {}
+            visuals_data[pollutant.name] = {'labels': [], 'data': [], 'border': []}
             for country in country_list:
-                total = PollutantEntry.objects.aggregate(total=Sum('pollution_level', filter=Q(pollutant__name=pollutant, country__iso_code=country)))
-                total = total['total']
-                count = PollutantEntry.objects.filter(pollutant__name=pollutant, country__iso_code=country).count()
+                total = PollutantEntry.objects.aggregate(total=Sum('pollution_level', filter=Q(pollutant=pollutant, country=country)))['total']
+                minimum = PollutantEntry.objects.aggregate(min=Min('pollution_level', filter=Q(pollutant=pollutant, country=country)))['min']
+                maximum = PollutantEntry.objects.aggregate(max=Max('pollution_level', filter=Q(pollutant=pollutant, country=country)))['max']
+                # maximum = PollutantEntry.objects.aggregate(max=Max('pollution_level', filter=Q(pollutant=pollutant, country=country)))['max']
+                count = PollutantEntry.objects.filter(pollutant=pollutant, country=country).count()
+                units = PollutantEntry.objects.filter(pollutant=pollutant, country=country).first()
 
+                units = units.units if units else ''
+
+                # total = total['total']
                 if total is not None and count:
-                    table_data[pollutant][country] = total/count
-                    visuals_data[pollutant]['labels'].append(country)
-                    visuals_data[pollutant]['data'].append(total/count)
+                    table_data[pollutant.name][country.iso_code] = {'avg': total/count, 'min' : minimum, 'max' : maximum, 'limit' : pollutant.limit_value, 'units':units}
+                    visuals_data[pollutant.name]['labels'].append(country.iso_code)
+                    visuals_data[pollutant.name]['data'].append(total/count)
+                    visuals_data[pollutant.name]['border'].append(country.color)
 
         # Post process visual data
         for pollutant_data in visuals_data.values():
-            data_count = len(pollutant_data['labels'])
-            HSV_tuples = [(i * 1.0 / data_count, 0.5, 0.5) for i in range(data_count)]
-            RGB_tuples = map(lambda x : colorsys.hsv_to_rgb(*x), HSV_tuples)
-            background_colors = []
-            border_colors = []
-            for rgb in RGB_tuples:
-                red, green, blue = int(rgb[0]* 255), int(rgb[1]* 255), int(rgb[2] * 255)
-                background_colors.append(f'fgba({red}, {green}, {blue}, 0.2)')
-                border_colors.append(f'fgba({red}, {green}, {blue}, 1)')
-
+            background_colors = [color + '50' for color in pollutant_data['border']]
             pollutant_data['labels'] = json.dumps(pollutant_data['labels'])
             pollutant_data['data'] = json.dumps(pollutant_data['data'])
             pollutant_data['background'] = json.dumps(background_colors)
-            pollutant_data['border'] = json.dumps(border_colors)
+            pollutant_data['border'] = json.dumps(pollutant_data['border'])
 
         context = {
             'app_name': request.resolver_match.app_name,
@@ -72,6 +70,10 @@ def airpollution(request):
                 ws = wb[tab_name]
                 pollutant_name = tab_name.split('_')[0].strip()
                 pollutant = Pollutant.objects.get_or_create(name=pollutant_name)
+                if pollutant[0].limit_value is None:
+                    limit_value = int(ws['A'][2].value.split()[-2])
+                    pollutant[0].limit_value = limit_value
+                    pollutant[0].save()
                 headers_row, headers, units = get_headers_and_units(ws)
 
                 # Save entries to Database
@@ -124,55 +126,66 @@ def airpollution(request):
 
 def temp_country_creator(request):
     countries = {
-        'Albania': 'AL',
-        'Andorra': 'AD',
-        'Austria': 'AT',
-        'Belgium': 'BE',
-        'Bosnia and Herzegovina': 'BA',
-        'Bulgaria': 'BG',
-        'Croatia': 'HR',
-        'Cyprus': 'CY',
-        'Czech Republic': 'CZ',
-        'Denmark': 'DK',
-        'Estonia': 'EE',
-        'Finland': 'FI',
-        'France': 'FR',
-        'Germany': 'DE',
-        'Greece': 'GR',
-        'Hungary': 'HU',
-        'Iceland': 'IS',
-        'Ireland': 'IE',
-        'Italy': 'IT',
-        'Kosovo under UNSCR 1244/99': 'XK',
-        'Latvia': 'LV',
-        'Lithuania': 'LT',
-        'Luxembourg': 'LU',
-        'Malta': 'MT',
-        'Montenegro': 'ME',
-        'Netherlands': 'NL',
-        'Norway': 'NO',
-        'Poland': 'PL',
-        'Portugal': 'PT',
-        'Romania': 'RO',
-        'Serbia': 'RS',
-        'Slovakia': 'SK',
-        'Slovenia': 'SI',
-        'Spain': 'ES',
-        'Sweden': 'SE',
-        'Switzerland': 'CH',
-        'The former Yugoslav Republic of Macedonia': 'MK',
-        'Turkey': 'TR',
-        'United Kingdom': 'GB',
+        'Albania': ['AL', '#f60a0a'],
+        'Andorra': ['AD', '#2019c0'],
+        'Austria': ['AT', '#a81b1b'],
+        'Belgium': ['BE', '#000000'],
+        'Bosnia and Herzegovina': ['BA', '#ffd200'],
+        'Bulgaria': ['BG', '#468650'],
+        'Croatia': ['HR', '#21248a'],
+        'Cyprus': ['CY', '#ff7a00'],
+        'Czech Republic': ['CZ', '#dfdfdf'],
+        'Denmark': ['DK', '#b60000'],
+        'Estonia': ['EE', '#2f8ebc'],
+        'Finland': ['FI', '#011d92'],
+        'France': ['FR', '#dfdfdf'],
+        'Germany': ['DE', '#e0be1d'],
+        'Greece': ['GR', '#0b66aa'],
+        'Hungary': ['HU', '#295934'],
+        'Iceland': ['IS', '#2933d9'],
+        'Ireland': ['IE', '#00d614'],
+        'Italy': ['IT', '#c30000'],
+        'Kosovo under UNSCR 1244/99': ['XK', '#354dcb'],
+        'Latvia': ['LV', '#762424'],
+        'Lithuania': ['LT', '#ffc000'],
+        'Luxembourg': ['LU', '#6dc0f6'],
+        'Malta': ['MT', '#dfdfdf'],
+        'Montenegro': ['ME', '#a07900'],
+        'Netherlands': ['NL', '#ff6000'],
+        'Norway': ['NO', '#ff0000'],
+        'Poland': ['PL', '#ffbcbc'],
+        'Portugal': ['PT', '#064a00'],
+        'Romania': ['RO', '#201b82'],
+        'Serbia': ['RS', '#3d2269'],
+        'Slovakia': ['SK', '#294bff'],
+        'Slovenia': ['SI', '#ff3333'],
+        'Spain': ['ES', '#f6a900'],
+        'Sweden': ['SE', '#3c73d3'],
+        'Switzerland': ['CH', '#cf3535'],
+        'The former Yugoslav Republic of Macedonia': ['MK', '#ecc615'],
+        'Turkey': ['TR', '#c82727'],
+        'United Kingdom': ['GB', '#071260'],
     }
+
     to_insert = []
 
-    for country_name, iso_code in countries.items():
-        to_insert.append(Country(iso_code=iso_code, name=country_name))
-    Country.objects.bulk_create(to_insert)
+    for country_name, data in countries.items():
+        to_insert.append(Country(iso_code=data[0], name=country_name, color=data[1]))
+
+    if request.GET.get('update', '') == 'true':
+        Country.objects.bulk_update(to_insert, ['color'])
+    else:
+        Country.objects.bulk_create(to_insert)
 
     context = {
         'app_name': request.resolver_match.app_name,
         'message_success': 'Countries created successfully',
     }
-    return render(request, 'airpollution/welcome.html', context)
+    return redirect('airpollution:airpollution')
 
+def temp_add_colors_to_pollutants(request):
+    pollutants = ['PM2.5', 'PM10', 'NO2', 'O3', 'BaP', 'SO2']
+    colors = ['#dc5c5c', '#dc5cdb', '#5c63dc', '#5cdadc', '#66dc5c', '#dcdb5c']
+    to_insert = [Pollutant(name=pollutant, color=colors[i]) for i, pollutant in enumerate(pollutants)]
+    Pollutant.objects.bulk_update(to_insert, ['color'])
+    return redirect('airpollution:airpollution')
