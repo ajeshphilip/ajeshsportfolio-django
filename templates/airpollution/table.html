@@ -1,5 +1,9 @@
 {% extends 'base.html' %}
 {% load static %}
+{% block head %}
+    <!-- Custom styles for this template-->
+   <link href="{% static 'vendor/datatables/dataTables.bootstrap4.min.css' %}" rel="stylesheet">
+{% endblock %}
 {% block content %}
     <!-- Upload File Section Form-->
     <div class="row">
