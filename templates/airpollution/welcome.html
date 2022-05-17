@@ -73,21 +73,8 @@
 
                         </tr>
                         </thead>
-                        <tbody>
-                        {% for pollution_name, pollution_data in data.items %}
-                            {% for country_iso, data in pollution_data.items %}
-                                <tr>
-                                    <th scope="row">{{ pollution_name }}</th>
-                                    <td>{{ country_iso }}</td>
-                                    <td>{{ data.avg|floatformat }}</td>
-                                    <td>{{ data.min|floatformat }}</td>
-                                    <td>{{ data.max|floatformat }}</td>
-                                    <td>{{ data.limit }}</td>
-                                    <td>{{ data.units }}</td>
+                        <tbody id="table-body">
 
-                                </tr>
-                            {% endfor %}
-                        {% endfor %}
                         </tbody>
                     </table>
                 </div>
@@ -106,13 +93,29 @@
                 <div class="divider-custom-icon"><i class="fas fa-star"></i></div>
                 <div class="divider-custom-line"></div>
             </div>
-            <!-- Upload File Section Form-->
-            <div class="col-lg-8 mx-auto">
-                {% for pollutant_name, data in visuals_data.items %}
-                    <canvas class="myChart mb-3" width="400" height="400" data-name="{{ pollutant_name }}"
-                        data-labels="{{ data.labels }}" data-data="{{ data.data }}"
-                            data-background="{{ data.background }}" data-border="{{ data.border }}"></canvas>
-                {% endfor %}
+            <!-- Visuals -->
+            <div class="row">
+                <div id="visuals-container" class="col-lg-8 mx-auto">
+                    <div class="row">
+                        <div class="col-12 col-md-6">
+                            <select class="form-control" id="chart2-summary-type">
+                                <option value="max">Maximum</option>
+                                <option value="min">Minimum</option>
+                                <option value="avg">Average</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <select class="form-control" id="chart2-pollutant">
+                                {% for pollutant in pollutant_list %}
+                                <option value={{ pollutant }}>{{ pollutant }}</option>
+                                {% endfor %}
+
+                            </select>
+                        </div>
+                    <div id="chart2"></div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </section>
@@ -120,43 +123,96 @@
 
 {% block js %}
     <script>
-        $(document).ready( function() {
-            $('.myChart').each(function (i, ctx) {
-                let name = $(ctx).attr('data-name')
-                let labels = $(ctx).attr('data-labels')
-                let data = $(ctx).attr('data-data')
-                let background = $(ctx).attr('data-background')
-                let border = $(ctx).attr('data-border')
-
-                labels = JSON.parse(labels)
-                data = JSON.parse(data)
-                background = JSON.parse(background)
-                border = JSON.parse(border)
-
-                myChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: name,
-                            data: data,
-                            backgroundColor: background,
-                            borderColor: border,
-                            borderWidth: 1
-                        }]
+        function render_chart(chart_type, canvas, name, labels, datasets){
+            let scales = {}
+            if (chart_type === 'bar'){
+                scales = {
+                    xAxes: [{
+                        stacked: true
+                    }],
+                    yAxes: [{
+                        stacked: true
+                    }]
+                }
+            }
+            else if (chart_type === 'line'){
+                scales = scales = {
+                    xAxes: [{
+                        display: true,
+                        labelString: 'Month',
+                    }],
+                    yAxes: [{
+                        display: true,
+                        labelString: 'Value',
+                    }]
+                }
+            }
+            myChart = new Chart(canvas, {
+                type: chart_type,
+                data: {'labels': labels, 'datasets': datasets},
+                options: {
+                    title: {
+                        display: true,
+                        text: name
                     },
-                    options: {
-                        scales: {
-                            y: [{
-                                ticks: {
-                                    beginAtZero: true
-                                }
-                            }]
-                        }
+                    tooltips: {
+                        mode: 'index',
+                        intersect: false,
+                        position: 'nearest'
+                    },
+                    responsive: true,
+                    scales: {
+                        xAxes: [{
+                            stacked: true
+                        }],
+                        yAxes: [{
+                            stacked: true
+                        }]
                     }
-                });
-            })
+                }
+            });
+
+        }
+
+         $.get("airpollution_visual_data1", function (data) {
+            for (const[chart_name, d] of Object.entries(data)) {
+                let canvas = $('<canvas />').addClass('mb-3').attr('width', "400").attr('height', '350')
+                $('#visuals-container').append(canvas)
+                render_chart('bar', canvas, chart_name, d.labels, d.datasets)
+            }
+        });
+
+        let loadChart2 = function(summary_type, pollutants){
+            $.get(`airpollution_visual_data2?summary_type=${summary_type}&pollutant=${pollutants}`, function (data) {
+                let canvas = $('<canvas />').addClass('mb-3').attr('width', "400").attr('height', '350')
+                $('#chart2').html(canvas)
+                render_chart('line', canvas, data.name, data.labels, data.datasets)
+            });
+        }
+        loadChart2('max', 'PM10')
+        $('#chart2-summary-type', '#chart2-pollutant').on('change',function(){
+            let summary_type = $('#chart2-summary-type').val()
+            let pollutant = $('#chart2-pollutant').val()
+            loadChart2(summary_type, pollutant)
+        })
+
+        $.get("airpollution_table_data", function (data) {
+            for (const[pollution_name, pollution_data] of Object.entries(data)){
+                for (const[country_iso, d] of Object.entries(pollution_data)){
+                    let tr = $('<tr />')
+                    tr.append($('<th />', {text: pollution_name}))
+                    tr.append($('<td />', {text: country_iso}))
+                    tr.append($('<td />', {text: d.avg.toFixed(2)}))
+                    tr.append($('<td />', {text: d.min.toFixed(2)}))
+                    tr.append($('<td />', {text: d.max.toFixed(2)}))
+                    tr.append($('<td />', {text: d.limit}))
+                    tr.append($('<td />', {text: d.units}))
+                    $('#table-body').append(tr)
+                }
+            }
             $('#our-table').DataTable();
         });
+
+
 </script>
 {% endblock %}
