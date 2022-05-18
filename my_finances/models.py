@@ -8,6 +8,7 @@ class Income(models.Model):
         SAL = 1, "SALARY"
         BON = 2, "BONUS"
         GIF = 3,  "GIFT"
+        OTH = 4,  "OTHER"
 
     class RInterval(models.IntegerChoices):
         NA = 1, "N/A"
