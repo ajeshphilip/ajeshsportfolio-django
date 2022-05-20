@@ -6,4 +6,5 @@ def add_custom_context(request):
         'app_name': request.resolver_match.app_name,
         'page_path': request.path,
         'today': datetime.today(),
+        'user': request.user if request.user.is_authenticated else None
     }

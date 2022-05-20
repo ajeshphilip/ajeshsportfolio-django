@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 # Create your models here.
 
@@ -17,12 +18,16 @@ class Income(models.Model):
         MON = 4, "MONTHS"
         YEA = 5, "YEARS"
 
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='incomes')
     value = models.DecimalField(max_digits=10, decimal_places=2)
     date = models.DateField()
     type = models.PositiveSmallIntegerField(choices=ITypes.choices)
     repetitive = models.BooleanField(default=False)
     repetition_interval = models.PositiveSmallIntegerField(choices=RInterval.choices, default=1)
     repetition_time = models.PositiveSmallIntegerField(default=0)
+    # comment_char = models.CharField(max_length=255, null=True, blank=True)
+    comment_text = models.TextField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -50,12 +55,15 @@ class Outcome(models.Model):
         MON = 4,  "MONTHS"
         YEA = 5,  "YEARS"
 
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='outcomes')
     value = models.DecimalField(max_digits=10, decimal_places=2)
     date = models.DateField()
     type = models.PositiveSmallIntegerField(choices=OTypes.choices)
     repetitive = models.BooleanField(default=False)
     repetition_interval = models.PositiveSmallIntegerField(choices=RInterval.choices, default=1)
     repetition_time = models.PositiveSmallIntegerField(default=0)
+    comment_text = models.TextField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -70,8 +78,11 @@ class Balance(models.Model):
         CUR = 1, "CURRENT"
         SAV = 2, "SAVINGS"
 
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='balances')
     value = models.DecimalField(max_digits=10, decimal_places=2)
     type = models.PositiveSmallIntegerField(choices=BTypes.choices)
+    date = models.DateField()
+    comment_text = models.TextField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

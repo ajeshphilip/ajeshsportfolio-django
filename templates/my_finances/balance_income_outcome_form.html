@@ -1,10 +1,14 @@
 {% extends 'base.html' %}
+{% load crispy_forms_tags %}
 {% block content %}
     <!-- Upload File Section Form-->
     <div class="row">
+    <div class="col-lg-8 mx-auto">
+       <h1>{{ header }}</h1>
         <form method="post">{% csrf_token %}
-            {{ form.as_p }}
+            {{ form|crispy }}
             <input type="submit" value="Submit">
         </form>
+        </div>
     </div>
 {% endblock %}
