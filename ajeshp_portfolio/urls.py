@@ -8,6 +8,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('website.urls')),
     path('airpollution/', include('airpollution.urls')),
+    path('api/airpollution/', include('airpollution.api_urls')),
     path('accounts/', include('accounts.urls')),
     path('my_finances/', include('my_finances.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
